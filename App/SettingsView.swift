@@ -67,6 +67,8 @@ private struct SettingsForm: View {
                 }
             }
             .formStyle(.grouped)
+            // Grouped Form is a scroll view; window already sizes to fit, so stop the elastic scroll and scroller.
+            .scrollDisabled(true)
 
             HStack {
                 MenuBarPreview(deadline: LayoffSettings.wholeMinute(layoffDate), style: style, emoji: sanitizedEmoji)
