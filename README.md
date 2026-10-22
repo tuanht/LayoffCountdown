@@ -91,10 +91,13 @@ Config/Signing.xcconfig   signing settings; overrides go in Signing.local.xcconf
 Config/AdHoc.entitlements sandbox-only entitlements used by the DMG script
 project.yml               XcodeGen source for LayoffCountdown.xcodeproj
 scripts/make-dmg.sh       Release build + DMG
+scripts/make-icon.sh      redraws the app icon (drawing code in make-icon.swift)
 docs/superpowers/         design spec and implementation plan
 ```
 
 `project.yml` is the source of truth. Don't hand-edit the `.xcodeproj`, the `Info.plist` files or the `.entitlements` in `App/` and `Widget/`; change `project.yml` and run `xcodegen generate`.
+
+The app icon is drawn in code. To change it, edit `scripts/make-icon.swift` and run `bash scripts/make-icon.sh`, which rewrites `App/Assets.xcassets/AppIcon.appiconset`.
 
 ### How it works
 
