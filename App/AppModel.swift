@@ -5,17 +5,15 @@ import WidgetKit
 @MainActor
 final class AppModel: ObservableObject {
     @Published private(set) var settings: LayoffSettings
-    @Published private(set) var now = Date.now
 
     private let store = SettingsStore.make(appGroupID: AppGroup.current)
     private var didAutoOpenSettings = false
 
-    var state: CountdownState { .make(deadline: settings.layoffDate, now: now) }
-
     init() {
         settings = store.load()
-        startTicking()
     }
+
+    func state(at now: Date) -> CountdownState { .make(deadline: settings.layoffDate, now: now) }
 
     func update(_ s: LayoffSettings) {
         store.save(s)
@@ -29,15 +27,5 @@ final class AppModel: ObservableObject {
         guard settings.layoffDate == nil, !didAutoOpenSettings else { return false }
         didAutoOpenSettings = true
         return true
-    }
-
-    /// Fires on whole seconds so label flips together with widget's system timer.
-    /// `.common` mode keeps ticking while dropdown menu tracks.
-    private func startTicking() {
-        let nextSecond = Date(timeIntervalSinceReferenceDate: Date.now.timeIntervalSinceReferenceDate.rounded(.up))
-        let timer = Timer(fire: nextSecond, interval: 1, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.now = .now }
-        }
-        RunLoop.main.add(timer, forMode: .common)
     }
 }

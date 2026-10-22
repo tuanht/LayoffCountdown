@@ -1,30 +1,28 @@
 import LayoffCore
+import ServiceManagement
 import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
 
-    /// Model ticks every second. Form takes model as plain value so SwiftUI skips its body on ticks
-    /// and pickers/text field are not redrawn mid-edit; only preview line observes clock.
     var body: some View {
-        SettingsForm(model: model)
+        SettingsForm(initial: model.settings)
     }
 }
 
+/// Edits draft seeded from settings when window opens. Only Save writes back.
 private struct SettingsForm: View {
-    let model: AppModel
+    @EnvironmentObject private var model: AppModel
 
     @State private var layoffDate: Date
     @State private var startDate: Date
     @State private var emoji: String
     @State private var style: MenuBarStyle
-    @State private var openAtLogin = LaunchAtLogin.isEnabled || LaunchAtLogin.needsApproval
-    @State private var loginNeedsApproval = LaunchAtLogin.needsApproval
+    @State private var openAtLogin = false
+    @State private var loginNeedsApproval = false
     @State private var loginError: String?
 
-    init(model: AppModel) {
-        self.model = model
-        let s = model.settings
+    init(initial s: LayoffSettings) {
         _layoffDate = State(initialValue: s.layoffDate ?? LayoffSettings.defaultLayoffDate(now: .now, calendar: .current))
         _startDate = State(initialValue: s.startDate ?? .now)
         _emoji = State(initialValue: s.emoji)
@@ -71,7 +69,7 @@ private struct SettingsForm: View {
             .formStyle(.grouped)
 
             HStack {
-                MenuBarPreview(deadline: layoffMoment, style: style, emoji: sanitizedEmoji)
+                MenuBarPreview(deadline: LayoffSettings.wholeMinute(layoffDate), style: style, emoji: sanitizedEmoji)
                 Spacer()
                 Button("Save", action: save)
                     .keyboardShortcut(.defaultAction)
@@ -80,20 +78,18 @@ private struct SettingsForm: View {
         }
         .frame(width: 420)
         .fixedSize(horizontal: false, vertical: true)
-        // User may approve login item in System Settings while window stays open.
+        // Login item can change in System Settings while window stays open or hidden.
+        .onAppear(perform: refreshLoginState)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            loginNeedsApproval = LaunchAtLogin.needsApproval
-            openAtLogin = LaunchAtLogin.isEnabled || loginNeedsApproval
+            refreshLoginState()
+        }
+        // Settings window is app's only regular window, so any key change means it came forward.
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+            refreshLoginState()
         }
     }
 
     private var sanitizedEmoji: String { LayoffSettings.sanitizedEmoji(emoji) }
-
-    /// Seconds zeroed: picker keeps seconds from its initial value, and moment off whole minute
-    /// would flip menu bar out of step with widget timer.
-    private var layoffMoment: Date {
-        Calendar.current.dateInterval(of: .minute, for: layoffDate)?.start ?? layoffDate
-    }
 
     /// 23d 4h 17m 52s, matching example titles used across app.
     private func sampleTitle(_ style: MenuBarStyle) -> String {
@@ -107,7 +103,7 @@ private struct SettingsForm: View {
         s.menuBarStyle = style
         // Start of day, so leftover time of day does not skew progress.
         s.startDate = Calendar.current.startOfDay(for: startDate)
-        model.update(s.settingLayoffDate(layoffMoment, now: .now))
+        model.update(s.settingLayoffDate(layoffDate, now: .now))
     }
 
     private func setOpenAtLogin(_ on: Bool) {
@@ -117,22 +113,25 @@ private struct SettingsForm: View {
         } catch {
             loginError = error.localizedDescription
         }
-        // Status, not requested value: failed call reverts toggle, pending approval keeps it on.
-        loginNeedsApproval = LaunchAtLogin.needsApproval
-        openAtLogin = LaunchAtLogin.isEnabled || loginNeedsApproval
+        refreshLoginState()
+    }
+
+    /// Toggle follows system status, not requested value: failed call reverts it, pending approval keeps it on.
+    private func refreshLoginState() {
+        let status = LaunchAtLogin.status
+        loginNeedsApproval = status == .requiresApproval
+        openAtLogin = status == .enabled || loginNeedsApproval
     }
 }
 
 private struct MenuBarPreview: View {
-    @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var ticker: Ticker
     let deadline: Date
     let style: MenuBarStyle
     let emoji: String
 
     var body: some View {
-        Text(CountdownFormatter.menuBarTitle(state: .make(deadline: deadline, now: model.now),
-                                             style: style, emoji: emoji))
-            .monospacedDigit()
+        MenuBarTitle(state: .make(deadline: deadline, now: ticker.now), style: style, emoji: emoji)
             .foregroundStyle(.secondary)
     }
 }

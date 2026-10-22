@@ -90,7 +90,7 @@ final class SettingsTests: XCTestCase {
 
     func testFirstSaveSetsStartDate() {
         let now = Date(timeIntervalSinceReferenceDate: 790_000_000)
-        let layoff = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let layoff = Date(timeIntervalSinceReferenceDate: 800_000_040)
         let updated = LayoffSettings.default.settingLayoffDate(layoff, now: now)
         XCTAssertEqual(updated.layoffDate, layoff)
         XCTAssertEqual(updated.startDate, now)
@@ -100,10 +100,19 @@ final class SettingsTests: XCTestCase {
         let start = Date(timeIntervalSinceReferenceDate: 780_000_000)
         var settings = LayoffSettings.default
         settings.startDate = start
-        let layoff = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let layoff = Date(timeIntervalSinceReferenceDate: 800_000_040)
         let updated = settings.settingLayoffDate(layoff, now: Date(timeIntervalSinceReferenceDate: 790_000_000))
         XCTAssertEqual(updated.layoffDate, layoff)
         XCTAssertEqual(updated.startDate, start)
+    }
+
+    func testSettingLayoffDateDropsSeconds() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Asia/Kolkata")!
+        let picked = calendar.date(from: DateComponents(year: 2026, month: 11, day: 20, hour: 17, minute: 0, second: 37))!
+        let updated = LayoffSettings.default.settingLayoffDate(picked, now: picked)
+        let parts = calendar.dateComponents([.hour, .minute, .second], from: updated.layoffDate!)
+        XCTAssertEqual(parts, DateComponents(hour: 17, minute: 0, second: 0))
     }
 
     func testDefaultLayoffDateIs1700Local() {

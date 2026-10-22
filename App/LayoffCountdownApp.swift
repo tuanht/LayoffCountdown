@@ -3,21 +3,25 @@ import SwiftUI
 @main
 struct LayoffCountdownApp: App {
     @StateObject private var model = AppModel()
+    @StateObject private var ticker = Ticker()
 
     var body: some Scene {
         // MenuBarExtra first: SwiftUI auto-opens first window scene at launch, settings window must not.
         MenuBarExtra {
             MenuContent()
                 .environmentObject(model)
+                .environmentObject(ticker)
         } label: {
             MenuBarLabel()
                 .environmentObject(model)
+                .environmentObject(ticker)
         }
         .menuBarExtraStyle(.menu)
 
         Window("Layoff Countdown Settings", id: OpenWindowAction.settingsID) {
             SettingsView()
                 .environmentObject(model)
+                .environmentObject(ticker)
                 .background(NonRestorableWindow())
         }
         .windowResizability(.contentSize)

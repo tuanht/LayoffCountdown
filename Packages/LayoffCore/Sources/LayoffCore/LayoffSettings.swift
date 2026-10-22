@@ -38,9 +38,16 @@ public struct LayoffSettings: Codable, Equatable, Sendable {
     /// Start date defaults to first save of layoff date (notice period start for progress bar).
     public func settingLayoffDate(_ date: Date, now: Date) -> LayoffSettings {
         var copy = self
-        copy.layoffDate = date
+        copy.layoffDate = Self.wholeMinute(date)
         if copy.startDate == nil { copy.startDate = now }
         return copy
+    }
+
+    /// Drops seconds. Date picker carries seconds from its initial value, and moment off whole minute
+    /// would flip menu bar out of step with widget timer. Reference date and time zone offsets
+    /// are whole minutes, so flooring absolute seconds works in any zone.
+    public static func wholeMinute(_ date: Date) -> Date {
+        Date(timeIntervalSinceReferenceDate: (date.timeIntervalSinceReferenceDate / 60).rounded(.down) * 60)
     }
 
     /// 17:00 local, 30 days after start of today.

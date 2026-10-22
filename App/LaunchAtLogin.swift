@@ -1,10 +1,8 @@
 import ServiceManagement
 
 enum LaunchAtLogin {
-    static var isEnabled: Bool { SMAppService.mainApp.status == .enabled }
-
-    /// Registered but blocked until user approves in System Settings › Login Items.
-    static var needsApproval: Bool { SMAppService.mainApp.status == .requiresApproval }
+    static var status: SMAppService.Status { SMAppService.mainApp.status }
+    static var isEnabled: Bool { status == .enabled }
 
     static func set(_ on: Bool) throws {
         if on {
