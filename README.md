@@ -80,6 +80,30 @@ Shared logic lives in `Packages/LayoffCore` and has its own tests:
 swift test --package-path Packages/LayoffCore
 ```
 
+### Project layout
+
+```
+App/                      menu bar app (SwiftUI MenuBarExtra + settings Window)
+Widget/                   WidgetKit extension, medium size only
+Packages/LayoffCore/      shared logic, no UI: countdown maths, formatting,
+                          settings storage, jokes, widget schedule
+Config/Signing.xcconfig   signing settings; overrides go in Signing.local.xcconfig
+Config/AdHoc.entitlements sandbox-only entitlements used by the DMG script
+project.yml               XcodeGen source for LayoffCountdown.xcodeproj
+scripts/make-dmg.sh       Release build + DMG
+docs/superpowers/         design spec and implementation plan
+```
+
+`project.yml` is the source of truth. Don't hand-edit the `.xcodeproj`, the `Info.plist` files or the `.entitlements` in `App/` and `Widget/`; change `project.yml` and run `xcodegen generate`.
+
+### How it works
+
+- **Countdown.** `CountdownState` is `notSet`, `counting` or `done`. `CountdownFormatter` turns the remaining seconds into `23d 4h` or `23d 4:17:52`. One day is 86,400 seconds counted back from the layoff moment, so the menu bar and the widget always agree.
+- **Menu bar.** `Ticker` publishes the time once a second, aligned to whole seconds. Only the menu bar label, the dropdown and the settings preview observe it, so the settings form doesn't redraw while you type. `AppModel` holds the settings and saves them.
+- **Settings storage.** `SettingsStore` keeps `LayoffSettings` as JSON under the `layoffSettings.v1` key. It uses the App Group when the build has a team (`AppGroup.current`), and the app's own defaults otherwise. When a team is added later, it copies the existing settings into the App Group once.
+- **Widget.** Widgets can't redraw every second, so the clock is `Nd ` plus a system timer (`Text(timerInterval:)`) counting down to the next day boundary. `WidgetSchedule` adds a timeline entry one second after each day boundary, at the deadline, and at local midnight for the daily joke. The progress bar is a self-updating `ProgressView(timerInterval:)` from **Announced on** to the layoff moment.
+- **Jokes.** 30 one-liners in `Jokes.swift`, one per day, picked by days since 2026-01-01. Keep them about the situation; never name a person or a company.
+
 ### Signing for your own Mac
 
 Without a team the app builds ad-hoc ("Sign to Run Locally") and the menu bar works fully. To get the widget reading your settings, sign with your free Apple ID Personal Team:
