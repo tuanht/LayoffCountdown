@@ -2,7 +2,7 @@ import XCTest
 @testable import LayoffCore
 
 final class JokesTests: XCTestCase {
-    var cal: Calendar = {
+    let cal: Calendar = {
         var c = Calendar(identifier: .gregorian)
         c.timeZone = TimeZone(identifier: "Europe/Berlin")!
         return c
@@ -35,5 +35,13 @@ final class JokesTests: XCTestCase {
 
     func testFarewell() {
         XCTAssertEqual(Jokes.farewell, "Goodbye. Hand in your laptop on the way out.")
+    }
+
+    func testJokeAdvancesOneIndexAcrossDST() throws {
+        for (y, mo, d) in [(2026, 10, 25), (2026, 3, 29)] {
+            let before = try XCTUnwrap(Jokes.all.firstIndex(of: Jokes.joke(for: try date(y, mo, d, 12), calendar: cal)))
+            let after = try XCTUnwrap(Jokes.all.firstIndex(of: Jokes.joke(for: try date(y, mo, d + 1, 12), calendar: cal)))
+            XCTAssertEqual(after, (before + 1) % Jokes.all.count, "\(y)-\(mo)-\(d)")
+        }
     }
 }

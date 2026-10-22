@@ -38,10 +38,16 @@ public enum Jokes {
 
     /// Picks by local day so joke changes once per day at midnight, same in app and widget.
     public static func joke(for date: Date, calendar: Calendar) -> String {
-        let epoch = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1)) ?? .distantPast
-        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: epoch), to: calendar.startOfDay(for: date)).day ?? 0
+        let days = calendar.dateComponents([.day], from: epoch(in: calendar.timeZone), to: calendar.startOfDay(for: date)).day ?? 0
         // Swift % keeps sign of dividend; dates before epoch need wrap to non-negative.
         let index = (days % all.count + all.count) % all.count
         return all[index]
+    }
+
+    /// Fixed gregorian epoch so caller's calendar system can't shift it; only time zone matters.
+    private static func epoch(in timeZone: TimeZone) -> Date {
+        var gregorian = Calendar(identifier: .gregorian)
+        gregorian.timeZone = timeZone
+        return gregorian.date(from: DateComponents(year: 2026, month: 1, day: 1))!
     }
 }
