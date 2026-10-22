@@ -8,9 +8,9 @@ struct MenuContent: View {
     var body: some View {
         Text(countdown)
         if let date = model.settings.layoffDate {
-            Text(date.formatted(.dateTime.weekday().day().month().hour().minute()))
+            Text(date.formatted(.dateTime.weekday().day().month().year().hour().minute()))
         }
-        Text(Jokes.joke(for: model.now, calendar: .current))
+        Text(model.state == .done ? Jokes.farewell : Jokes.joke(for: model.now, calendar: .current))
         Divider()
         Button("Settings…") { openWindow.settings() }
             .keyboardShortcut(",")

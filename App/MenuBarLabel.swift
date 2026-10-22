@@ -11,7 +11,7 @@ struct MenuBarLabel: View {
                                              emoji: model.settings.emoji))
             .monospacedDigit()
             .task {
-                if model.settings.layoffDate == nil { openWindow.settings() }
+                if model.claimFirstLaunchSettings() { openWindow.settings() }
             }
     }
 }

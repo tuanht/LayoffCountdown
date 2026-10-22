@@ -18,6 +18,7 @@ struct LayoffCountdownApp: App {
         Window("Layoff Countdown Settings", id: OpenWindowAction.settingsID) {
             SettingsView()
                 .environmentObject(model)
+                .background(NonRestorableWindow())
         }
         .windowResizability(.contentSize)
     }
@@ -31,4 +32,19 @@ extension OpenWindowAction {
         self(id: Self.settingsID)
         NSApp.activate(ignoringOtherApps: true)
     }
+}
+
+/// Restored settings window would pop on relaunch when "Close windows when quitting an app" is off.
+/// `restorationBehavior(.disabled)` needs macOS 15, and `NSQuitAlwaysKeepsWindows` registered default
+/// loses to the global setting, so opt out per window.
+private struct NonRestorableWindow: NSViewRepresentable {
+    final class HostView: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            window?.isRestorable = false
+        }
+    }
+
+    func makeNSView(context: Context) -> HostView { HostView() }
+    func updateNSView(_ nsView: HostView, context: Context) {}
 }
