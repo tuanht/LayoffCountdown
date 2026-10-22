@@ -232,7 +232,7 @@ func testNoAppGroupFallsBackToStandard() {
   - `public enum Jokes { static let all: [String]; static func joke(for date: Date, calendar: Calendar) -> String; static let farewell = "Goodbye. Hand in your laptop on the way out." }` — index = (days from 2026-01-01 to the start of `date`'s day in `calendar`) mod `all.count`, non-negative.
   - `public enum NoticeProgress { static func fraction(start: Date?, deadline: Date, now: Date) -> Double }` — clamp to `0...1`; `start == nil` or `start >= deadline` → `1.0`.
   - `public enum WidgetSchedule { static func entryDates(now: Date, deadline: Date?, calendar: Calendar) -> [Date]; static func dayBoundary(before deadline: Date, now: Date) -> Date }` — `dayBoundary` = `deadline - days*86400` where `days = parts(deadline - now).days`, i.e. the moment the day digit next changes is that boundary; the widget renders `"\(days)d "` + a timer counting down to it.
-  - `entryDates` returns, sorted and unique: `now`; every day boundary (`deadline - k*86400`) after `now` within the next 48 hours; the deadline itself if within 48 hours; the next local midnight (joke change). If `deadline` is nil or past, returns `[now, nextMidnight]`. Reload policy in Task 7 is `.after(last entry)`.
+  - `entryDates` returns, sorted and unique: `now`; one second after every day boundary before the deadline (`deadline - k*86400 + 1`) after `now` within the next 48 hours (an entry exactly on a boundary would get a zero-length timer and freeze at `kd 0:00`); the deadline itself if within 48 hours; the next local midnight (joke change). If `deadline` is nil or past, returns `[now, nextMidnight]`. Reload policy in Task 7 is `.after(last entry)`.
 
 - [ ] **Step 1: Write the failing tests:**
 
@@ -247,9 +247,9 @@ func testProgressStartAfterDeadline() {
     XCTAssertEqual(NoticeProgress.fraction(start: dl, deadline: dl, now: dl.addingTimeInterval(-50)), 1.0)
 }
 func testScheduleHasEntryAtEachDayBoundary() {
-    // deadline = now + 1d 2h → boundaries at now+2h (1d→0d) and deadline
+    // deadline = now + 1d 2h → entries 1 s after boundary now+2h (1d→0d), and at deadline
     let dates = WidgetSchedule.entryDates(now: now, deadline: now.addingTimeInterval(86_400 + 7_200), calendar: cal)
-    XCTAssertTrue(dates.contains(now.addingTimeInterval(7_200)))
+    XCTAssertTrue(dates.contains(now.addingTimeInterval(7_201)))
     XCTAssertTrue(dates.contains(now.addingTimeInterval(86_400 + 7_200)))
     XCTAssertEqual(dates, dates.sorted())
 }
