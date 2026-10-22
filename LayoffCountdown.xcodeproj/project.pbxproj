@@ -11,6 +11,7 @@
 		0BB683888BDFE51144D2785A /* LayoffWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7E11B9317D0A034739B196B /* LayoffWidget.swift */; };
 		1389C0047F50CB0A05B37D4D /* LayoffCore in Frameworks */ = {isa = PBXBuildFile; productRef = 011786CF7918D0209F988888 /* LayoffCore */; };
 		35D8EBB5CA1A151730FEF10A /* Ticker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 795B8120DBF740B7FC962853 /* Ticker.swift */; };
+		5515DD74BCEEB9FF2EC1179F /* LayoffWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 833D3E675EC7A44E918572B5 /* LayoffWidgetView.swift */; };
 		6C596E027512451E4F65438A /* LayoffCore in Frameworks */ = {isa = PBXBuildFile; productRef = 14BD8A3F71EB2BAC0F1A5A87 /* LayoffCore */; };
 		84B51C1CF992063D46935C13 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 561EA09A8107E4903D2B303F /* AppModel.swift */; };
 		87D2F17844746AA3DD2367F5 /* LayoffCountdownApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87774E70C600B8EE1E665D0E /* LayoffCountdownApp.swift */; };
@@ -53,6 +54,7 @@
 		795B8120DBF740B7FC962853 /* Ticker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ticker.swift; sourceTree = "<group>"; };
 		798B44579FC37D494ED77352 /* LayoffCountdown.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LayoffCountdown.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7FE01470C51496708C9940C6 /* MenuContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuContent.swift; sourceTree = "<group>"; };
+		833D3E675EC7A44E918572B5 /* LayoffWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoffWidgetView.swift; sourceTree = "<group>"; };
 		87774E70C600B8EE1E665D0E /* LayoffCountdownApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoffCountdownApp.swift; sourceTree = "<group>"; };
 		94906C8A65A555E6CBEBFFA7 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		CA3C9E6EC5A266B89C8CFBCF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -114,6 +116,7 @@
 				31B073E1D31651FA0E36FAE5 /* Info.plist */,
 				0FE3E4E0979E44CB04BEA4A0 /* LayoffWidget.entitlements */,
 				D7E11B9317D0A034739B196B /* LayoffWidget.swift */,
+				833D3E675EC7A44E918572B5 /* LayoffWidgetView.swift */,
 			);
 			path = Widget;
 			sourceTree = "<group>";
@@ -250,6 +253,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0BB683888BDFE51144D2785A /* LayoffWidget.swift in Sources */,
+				5515DD74BCEEB9FF2EC1179F /* LayoffWidgetView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
