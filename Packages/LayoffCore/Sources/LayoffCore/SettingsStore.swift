@@ -21,7 +21,8 @@ public final class SettingsStore {
 
     /// App Group when usable, else `.standard`, so menu bar app never depends on App Group.
     public static func make(appGroupID: String?) -> SettingsStore {
-        // `UserDefaults(suiteName:)` succeeds for any name; container check proves group is reachable.
+        // Real guard: `AppGroup.identifier` gives nil without team. On macOS `containerURL` returns URL
+        // even for unentitled group, so container check only cheap extra.
         guard let appGroupID,
               FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) != nil,
               let group = UserDefaults(suiteName: appGroupID)

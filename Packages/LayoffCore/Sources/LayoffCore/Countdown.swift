@@ -1,6 +1,6 @@
 import Foundation
 
-public enum MenuBarStyle: String, Codable, CaseIterable {
+public enum MenuBarStyle: String, Codable, CaseIterable, Sendable {
     case short, full
 }
 

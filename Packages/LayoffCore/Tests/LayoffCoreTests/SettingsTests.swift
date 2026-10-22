@@ -2,17 +2,26 @@ import XCTest
 @testable import LayoffCore
 
 final class SettingsTests: XCTestCase {
-    private var suiteNames: [String] = []
+    // Fixed names: cfprefsd keeps an empty plist per suite name, so per-test UUID suites pile up.
+    private static let suiteName = "test.LayoffCore.settings"
+    private static let sourceSuiteName = "test.LayoffCore.migrationSource"
 
-    private func makeDefaults() -> UserDefaults {
-        let name = "test.\(UUID())"
-        suiteNames.append(name)
-        return UserDefaults(suiteName: name)!
+    private func makeDefaults() -> UserDefaults { UserDefaults(suiteName: Self.suiteName)! }
+    private func makeSourceDefaults() -> UserDefaults { UserDefaults(suiteName: Self.sourceSuiteName)! }
+
+    private func clearSuites() {
+        for name in [Self.suiteName, Self.sourceSuiteName] {
+            UserDefaults().removePersistentDomain(forName: name)
+        }
+    }
+
+    override func setUp() {
+        super.setUp()
+        clearSuites()
     }
 
     override func tearDown() {
-        for name in suiteNames { UserDefaults().removePersistentDomain(forName: name) }
-        suiteNames = []
+        clearSuites()
         super.tearDown()
     }
 
@@ -62,6 +71,15 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(loaded.menuBarStyle, .short)
     }
 
+    func testWrongTypeEmojiKeepsDate() {
+        let defaults = makeDefaults()
+        storeJSON(#"{"layoffDate": 800000000, "emoji": 42, "menuBarStyle": "full"}"#, in: defaults)
+        let loaded = SettingsStore(defaults: defaults).load()
+        XCTAssertEqual(loaded.layoffDate, Date(timeIntervalSinceReferenceDate: 800_000_000))
+        XCTAssertEqual(loaded.emoji, "💀")
+        XCTAssertEqual(loaded.menuBarStyle, .full)
+    }
+
     func testEmojiSanitizing() {
         XCTAssertEqual(LayoffSettings.sanitizedEmoji(""), "💀")
         XCTAssertEqual(LayoffSettings.sanitizedEmoji("   "), "💀")
@@ -103,21 +121,20 @@ final class SettingsTests: XCTestCase {
     }
 
     func testMigratesFromStandardWhenGroupEmpty() {
-        let standard = makeDefaults()
+        let standard = makeSourceDefaults()
         let standardSettings = LayoffSettings.default.settingLayoffDate(
             Date(timeIntervalSinceReferenceDate: 800_000_000),
             now: Date(timeIntervalSinceReferenceDate: 790_000_000)
         )
         SettingsStore(defaults: standard).save(standardSettings)
 
-        let emptyGroup = makeDefaults()
-        XCTAssertEqual(SettingsStore(defaults: emptyGroup, migratingFrom: standard).load(), standardSettings)
+        let group = makeDefaults()
+        XCTAssertEqual(SettingsStore(defaults: group, migratingFrom: standard).load(), standardSettings)
 
-        let filledGroup = makeDefaults()
         var groupSettings = LayoffSettings.default
         groupSettings.emoji = "🔥"
-        SettingsStore(defaults: filledGroup).save(groupSettings)
-        XCTAssertEqual(SettingsStore(defaults: filledGroup, migratingFrom: standard).load(), groupSettings)
+        SettingsStore(defaults: group).save(groupSettings)
+        XCTAssertEqual(SettingsStore(defaults: group, migratingFrom: standard).load(), groupSettings)
     }
 
     func testNoAppGroupFallsBackToStandard() {

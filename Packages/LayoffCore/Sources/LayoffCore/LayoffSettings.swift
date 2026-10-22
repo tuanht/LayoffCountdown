@@ -1,6 +1,6 @@
 import Foundation
 
-public struct LayoffSettings: Codable, Equatable {
+public struct LayoffSettings: Codable, Equatable, Sendable {
     public static let defaultEmoji = "💀"
     public static let `default` = LayoffSettings()
 
@@ -21,12 +21,12 @@ public struct LayoffSettings: Codable, Equatable {
         case layoffDate, startDate, emoji, menuBarStyle
     }
 
-    /// Missing keys or unknown style (from newer build) fall back to defaults, so stored date survives.
+    /// Missing or unreadable emoji/style (e.g. unknown style from newer build) fall back to defaults, so stored date survives.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         layoffDate = try c.decodeIfPresent(Date.self, forKey: .layoffDate)
         startDate = try c.decodeIfPresent(Date.self, forKey: .startDate)
-        emoji = try c.decodeIfPresent(String.self, forKey: .emoji) ?? Self.defaultEmoji
+        emoji = (try? c.decodeIfPresent(String.self, forKey: .emoji)) ?? Self.defaultEmoji
         menuBarStyle = (try? c.decodeIfPresent(MenuBarStyle.self, forKey: .menuBarStyle)) ?? .short
     }
 
