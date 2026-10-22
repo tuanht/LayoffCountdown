@@ -20,8 +20,12 @@ if [[ project.yml -nt "$APP_NAME.xcodeproj/project.pbxproj" ]]; then
 fi
 
 # Always ad-hoc: Personal Team signing embeds Apple ID name and team ID in
-# signature. Command-line overrides beat Signing.local.xcconfig. No
-# get-task-allow: teammates' copies need no debugger attach.
+# signature. Command-line overrides beat Signing.local.xcconfig, so empty
+# APP_GROUP_ID also keeps team out of LCAppGroupID in Info.plist.
+# AdHoc.entitlements drops App Group: widget cannot read it without team, and
+# group ID without team prefix may trigger macOS 15+ access prompt.
+# Inject flag off even in Release: Xcode adds get-task-allow to every ad-hoc
+# build, and teammates' copies need no debugger attach.
 xcodebuild \
   -project "$APP_NAME.xcodeproj" \
   -scheme "$APP_NAME" \
@@ -30,11 +34,31 @@ xcodebuild \
   build \
   DEVELOPMENT_TEAM= \
   CODE_SIGN_IDENTITY=- \
+  APP_GROUP_ID= \
+  CODE_SIGN_ENTITLEMENTS="$PWD/Config/AdHoc.entitlements" \
   CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO
+
+APP="$BUILD_DIR/Build/Products/Release/$APP_NAME.app"
+
+# Guard against leaks before anything ships: no team, no network, no group.
+# Output captured first: grep -q exiting early could SIGPIPE codesign under
+# pipefail. Entitlements on stdout only, so bundle path cannot false-match.
+for bundle in "$APP" "$APP"/Contents/PlugIns/*.appex; do
+  info="$(codesign -dv "$bundle" 2>&1)"
+  if ! grep -qx 'TeamIdentifier=not set' <<<"$info"; then
+    echo "error: $bundle carries a team identifier" >&2
+    exit 1
+  fi
+  entitlements="$(codesign -d --entitlements - --xml "$bundle" 2>/dev/null)"
+  if grep -qE 'network|application-groups' <<<"$entitlements"; then
+    echo "error: $bundle has network or application-groups entitlement" >&2
+    exit 1
+  fi
+done
 
 rm -rf "$STAGE_DIR"
 mkdir -p "$STAGE_DIR" dist
-cp -R "$BUILD_DIR/Build/Products/Release/$APP_NAME.app" "$STAGE_DIR/"
+ditto "$APP" "$STAGE_DIR/$APP_NAME.app"
 ln -s /Applications "$STAGE_DIR/Applications"
 
 hdiutil create \

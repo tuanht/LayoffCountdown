@@ -41,15 +41,21 @@ If **Open at login** needs your approval, the settings window shows an **Open Sy
 
 ### Reset
 
-The app is sandboxed, so its settings live in `~/Library/Containers/com.layoffcountdown.app/Data/Library/Preferences/com.layoffcountdown.app.plist`. To start over, quit the app, then run:
+The app is sandboxed. In a DMG or other ad-hoc build, its settings live in `~/Library/Containers/com.layoffcountdown.app/Data/Library/Preferences/com.layoffcountdown.app.plist`. To start over, quit the app, then run:
 
 ```sh
 defaults delete ~/Library/Containers/com.layoffcountdown.app/Data/Library/Preferences/com.layoffcountdown.app layoffSettings.v1
 ```
 
+In a build signed with your Personal Team, the settings also live in the shared App Group. Delete that copy too, with your team ID in place of `<TEAM>`:
+
+```sh
+defaults delete ~/Library/Group\ Containers/<TEAM>.com.layoffcountdown.shared/Library/Preferences/<TEAM>.com.layoffcountdown.shared layoffSettings.v1
+```
+
 ## Widget
 
-The widget is a bonus. From the shared DMG, macOS still lists it in the widget gallery, but it always shows `Set your date in the app`. The widget can only read the app's settings when both are signed with a real team and share an App Group, and the DMG is not signed that way on purpose (see below). Teammates get the menu bar only.
+The widget is a bonus. From the shared DMG, it may be listed in the widget gallery, but it will show `Set your date in the app`. The widget can only read the app's settings when both are signed with a real team and share an App Group, and the DMG is not signed that way on purpose (see below). Teammates get the menu bar only. The [second-Mac widget test](#second-mac-widget-test) checks what a teammate's Mac actually does.
 
 The widget works on your own Mac when you build from source with your own Personal Team.
 
@@ -59,7 +65,7 @@ Install a new DMG the same way as the first one. Each DMG build looks like a dif
 
 ## Build from source
 
-You need Xcode 15 or later (the project uses macOS 14 SDK features). The generated `LayoffCountdown.xcodeproj` is committed, so open it and run the `LayoffCountdown` scheme.
+You need Xcode 16 or later. The generated `LayoffCountdown.xcodeproj` is committed, so open it and run the `LayoffCountdown` scheme.
 
 XcodeGen is needed only if you change `project.yml`:
 
@@ -96,7 +102,7 @@ Use this for your own Mac only. Personal Team signing puts your Apple ID name an
 bash scripts/make-dmg.sh
 ```
 
-This writes `dist/LayoffCountdown.dmg`. The script always builds ad-hoc, even when `Signing.local.xcconfig` sets a team, so no name or team ID ends up in teammates' copies.
+This writes `dist/LayoffCountdown.dmg`. The script always builds ad-hoc without the App Group, even when `Signing.local.xcconfig` sets a team, so no name or team ID ends up in teammates' copies. It stops with an error if a team ID, network entitlement or App Group slips into the build.
 
 ## Second-Mac widget test
 
@@ -109,4 +115,4 @@ Run this once on a Mac that didn't build the app, to tell the team what to expec
 5. Note whether the widget appears in the gallery
 6. Add the medium widget and note whether it shows your date counting down or `Set your date in the app`
 
-Expected result from the DMG: the widget appears and shows `Set your date in the app`.
+Expected result from the DMG: the widget may or may not be listed, and if it is, it shows `Set your date in the app`.
