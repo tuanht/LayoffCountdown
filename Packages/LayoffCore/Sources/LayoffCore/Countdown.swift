@@ -17,9 +17,14 @@ public enum CountdownState: Equatable {
 }
 
 public enum CountdownFormatter {
+    /// ~31.7M years: far past any real deadline, far below Int.max.
+    private static let maxSeconds: TimeInterval = 1e15
+
     /// Day = 86,400 s, not calendar day, so menu bar and widget agree across DST.
     public static func parts(_ remaining: TimeInterval) -> (days: Int, hours: Int, minutes: Int, seconds: Int) {
-        let total = max(0, Int(remaining.rounded(.down)))
+        // Int(Double) traps on NaN, infinity and values past Int.max.
+        guard remaining.isFinite, remaining > 0 else { return (0, 0, 0, 0) }
+        let total = Int(min(remaining, maxSeconds).rounded(.down))
         return (total / 86_400, total % 86_400 / 3_600, total % 3_600 / 60, total % 60)
     }
 
@@ -34,8 +39,8 @@ public enum CountdownFormatter {
     public static func full(_ remaining: TimeInterval) -> String {
         let p = parts(remaining)
         let clock = p.hours > 0
-            ? String(format: "%d:%02d:%02d", p.hours, p.minutes, p.seconds)
-            : String(format: "%d:%02d", p.minutes, p.seconds)
+            ? String(format: "%ld:%02ld:%02ld", p.hours, p.minutes, p.seconds)
+            : String(format: "%ld:%02ld", p.minutes, p.seconds)
         return "\(p.days)d \(clock)"
     }
 
@@ -44,7 +49,10 @@ public enum CountdownFormatter {
         case .notSet: return "\(emoji) Set date"
         case .done: return "\(emoji) Goodbye"
         case .counting(let remaining):
-            return "\(emoji) " + (style == .short ? short(remaining) : full(remaining))
+            switch style {
+            case .short: return "\(emoji) \(short(remaining))"
+            case .full: return "\(emoji) \(full(remaining))"
+            }
         }
     }
 }

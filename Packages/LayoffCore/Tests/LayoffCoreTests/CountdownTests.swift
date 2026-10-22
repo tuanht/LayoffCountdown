@@ -23,6 +23,35 @@ final class CountdownTests: XCTestCase {
         XCTAssertEqual(CountdownFormatter.full(59.9), "0d 0:59")
     }
 
+    func testFullHourBoundaries() {
+        XCTAssertEqual(CountdownFormatter.full(h), "0d 1:00:00")
+        XCTAssertEqual(CountdownFormatter.full(h - 1), "0d 59:59")
+        XCTAssertEqual(CountdownFormatter.full(3*d), "3d 0:00")
+    }
+
+    func testInvalidRemainingFormatsAsZero() {
+        XCTAssertEqual(CountdownFormatter.short(-5), "0m 0s")
+        XCTAssertEqual(CountdownFormatter.full(-5), "0d 0:00")
+        XCTAssertEqual(CountdownFormatter.short(.nan), "0m 0s")
+        XCTAssertEqual(CountdownFormatter.full(.nan), "0d 0:00")
+        XCTAssertEqual(CountdownFormatter.short(.infinity), "0m 0s")
+        XCTAssertEqual(CountdownFormatter.full(-.infinity), "0d 0:00")
+    }
+
+    func testHugeRemainingDoesNotTrap() {
+        XCTAssertTrue(CountdownFormatter.full(10_000*d).hasPrefix("10000d"))
+        _ = CountdownFormatter.full(.greatestFiniteMagnitude)
+        // Corrupt stored date far in future must still format, not trap.
+        let now = Date()
+        let state = CountdownState.make(deadline: Date(timeIntervalSinceReferenceDate: 1e300), now: now)
+        XCTAssertFalse(CountdownFormatter.menuBarTitle(state: state, style: .full, emoji: "💀").isEmpty)
+    }
+
+    func testSubSecondRemainingIsCounting() {
+        let now = Date()
+        XCTAssertEqual(CountdownState.make(deadline: now.addingTimeInterval(0.5), now: now), .counting(remaining: 0.5))
+    }
+
     func testPastDeadlineIsDone() {
         let now = Date()
         XCTAssertEqual(CountdownState.make(deadline: now.addingTimeInterval(-5), now: now), .done)
