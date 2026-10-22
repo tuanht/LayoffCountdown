@@ -1,0 +1,8 @@
+.superpowers/
+build/
+dist/
+DerivedData/
+xcuserdata/
+.DS_Store
+.build/
+Config/Signing.local.xcconfig

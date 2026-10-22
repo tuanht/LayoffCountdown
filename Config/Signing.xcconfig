@@ -1,0 +1,7 @@
+// Fill in your Apple ID "Personal Team" ID to enable the widget's shared settings.
+// Teammates: put overrides in Signing.local.xcconfig (gitignored) instead of editing this file.
+DEVELOPMENT_TEAM =
+CODE_SIGN_IDENTITY = -
+// With a team set, use: CODE_SIGN_IDENTITY = Apple Development
+APP_GROUP_ID = $(DEVELOPMENT_TEAM).com.layoffcountdown.shared
+#include? "Signing.local.xcconfig"

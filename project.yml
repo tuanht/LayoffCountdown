@@ -1,0 +1,66 @@
+name: LayoffCountdown
+options:
+  createIntermediateGroups: true
+settings:
+  base:
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_STYLE: Automatic
+packages:
+  LayoffCore:
+    path: Packages/LayoffCore
+targets:
+  LayoffCountdown:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+    configFiles:
+      Debug: Config/Signing.xcconfig
+      Release: Config/Signing.xcconfig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.layoffcountdown.app
+        PRODUCT_NAME: LayoffCountdown
+    info:
+      path: App/Info.plist
+      properties:
+        LSUIElement: true
+        LCAppGroupID: $(APP_GROUP_ID)
+    entitlements:
+      path: App/LayoffCountdown.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.application-groups:
+          - $(APP_GROUP_ID)
+    dependencies:
+      - package: LayoffCore
+      - target: LayoffWidgetExtension
+        embed: true
+    scheme: {}
+  LayoffWidgetExtension:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: Widget
+    configFiles:
+      Debug: Config/Signing.xcconfig
+      Release: Config/Signing.xcconfig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.layoffcountdown.app.widget
+        PRODUCT_NAME: LayoffWidgetExtension
+    info:
+      path: Widget/Info.plist
+      properties:
+        LCAppGroupID: $(APP_GROUP_ID)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Widget/LayoffWidget.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.application-groups:
+          - $(APP_GROUP_ID)
+    dependencies:
+      - package: LayoffCore
