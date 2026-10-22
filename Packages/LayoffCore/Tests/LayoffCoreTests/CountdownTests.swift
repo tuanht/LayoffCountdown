@@ -12,13 +12,15 @@ final class CountdownTests: XCTestCase {
     }
 
     func testFull() {
-        XCTAssertEqual(CountdownFormatter.full(23*d + 4*h + 17*m + 52), "23d 04:17:52")
-        XCTAssertEqual(CountdownFormatter.full(4*h + 17*m + 52), "0d 04:17:52")
+        XCTAssertEqual(CountdownFormatter.full(23*d + 4*h + 17*m + 52), "23d 4:17:52")
+        XCTAssertEqual(CountdownFormatter.full(4*h + 17*m + 52), "0d 4:17:52")
+        XCTAssertEqual(CountdownFormatter.full(2*d + 17*m + 52), "2d 17:52")
+        XCTAssertEqual(CountdownFormatter.full(5), "0d 0:05")
     }
 
     func testRemainingIsFloored() {
         XCTAssertEqual(CountdownFormatter.short(23*d + 4*h + 59*m + 59.9), "23d 4h")
-        XCTAssertEqual(CountdownFormatter.full(59.9), "0d 00:00:59")
+        XCTAssertEqual(CountdownFormatter.full(59.9), "0d 0:59")
     }
 
     func testPastDeadlineIsDone() {
@@ -35,7 +37,7 @@ final class CountdownTests: XCTestCase {
     func testMenuBarTitle() {
         let r = 23*d + 4*h + 17*m + 52
         XCTAssertEqual(CountdownFormatter.menuBarTitle(state: .counting(remaining: r), style: .short, emoji: "💀"), "💀 23d 4h")
-        XCTAssertEqual(CountdownFormatter.menuBarTitle(state: .counting(remaining: r), style: .full, emoji: "💀"), "💀 23d 04:17:52")
+        XCTAssertEqual(CountdownFormatter.menuBarTitle(state: .counting(remaining: r), style: .full, emoji: "💀"), "💀 23d 4:17:52")
         XCTAssertEqual(CountdownFormatter.menuBarTitle(state: .notSet, style: .short, emoji: "🪦"), "🪦 Set date")
         XCTAssertEqual(CountdownFormatter.menuBarTitle(state: .done, style: .full, emoji: "💀"), "💀 Goodbye")
     }
@@ -52,6 +54,6 @@ final class CountdownTests: XCTestCase {
         guard case .counting(let remaining) = CountdownState.make(deadline: deadline, now: now) else {
             return XCTFail("expected counting")
         }
-        XCTAssertEqual(CountdownFormatter.full(remaining), "2d 01:00:00")
+        XCTAssertEqual(CountdownFormatter.full(remaining), "2d 1:00:00")
     }
 }

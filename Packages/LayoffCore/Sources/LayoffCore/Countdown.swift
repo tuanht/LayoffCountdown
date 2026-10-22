@@ -30,9 +30,13 @@ public enum CountdownFormatter {
         return "\(p.minutes)m \(p.seconds)s"
     }
 
+    /// Mirrors widget's system timer text: `H:MM:SS`, or `M:SS` when no hours left in current day.
     public static func full(_ remaining: TimeInterval) -> String {
         let p = parts(remaining)
-        return "\(p.days)d " + String(format: "%02d:%02d:%02d", p.hours, p.minutes, p.seconds)
+        let clock = p.hours > 0
+            ? String(format: "%d:%02d:%02d", p.hours, p.minutes, p.seconds)
+            : String(format: "%d:%02d", p.minutes, p.seconds)
+        return "\(p.days)d \(clock)"
     }
 
     public static func menuBarTitle(state: CountdownState, style: MenuBarStyle, emoji: String) -> String {
