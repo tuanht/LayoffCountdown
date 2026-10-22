@@ -184,7 +184,7 @@ func testMenuBarTitle() {
   - `public static func LayoffSettings.defaultLayoffDate(now: Date, calendar: Calendar) -> Date` — 30 days after today, at 17:00 local.
   - `public final class SettingsStore { init(defaults: UserDefaults); static func make(appGroupID: String?) -> SettingsStore; func load() -> LayoffSettings; func save(_ s: LayoffSettings); let usesAppGroup: Bool }`
   - Storage: JSON-encoded `LayoffSettings` under key `"layoffSettings.v1"`. `make` uses `UserDefaults(suiteName:)` only if the ID is non-nil AND `FileManager.default.containerURL(forSecurityApplicationGroupIdentifier:)` is non-nil; otherwise `.standard`.
-  - Decoding a missing `emoji`/`menuBarStyle` key yields defaults (custom `init(from:)` with `decodeIfPresent`).
+  - Decoding a missing `emoji`/`menuBarStyle` key, or an unknown `menuBarStyle` raw value (written by a newer build), yields defaults (custom `init(from:)`), so the stored date is never lost.
   - One-time migration: when `make` picks the App Group and the group has no `layoffSettings.v1` but `.standard` does, copy it into the group, so adding a team later keeps the user's date. Test via `init(defaults:migratingFrom:)` taking two suites.
 
 - [ ] **Step 1: Write the failing tests** (use `UserDefaults(suiteName: "test.\(UUID())")!`):
@@ -197,6 +197,7 @@ func testCorruptDataLoadsDefaults() {
     XCTAssertEqual(store.load(), .default)
 }
 func testMissingKeysDecodeToDefaults()  // JSON with only layoffDate → emoji "💀", style .short
+func testUnknownStyleKeepsDate()  // menuBarStyle "bogus" → style .short, layoffDate preserved
 func testEmojiSanitizing() {
     XCTAssertEqual(LayoffSettings.sanitizedEmoji(""), "💀")
     XCTAssertEqual(LayoffSettings.sanitizedEmoji("   "), "💀")
