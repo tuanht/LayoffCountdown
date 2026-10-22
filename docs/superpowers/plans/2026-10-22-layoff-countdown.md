@@ -15,7 +15,7 @@
 - Deployment target: macOS 14.0 for both targets and the package (`.macOS(.v14)`).
 - No network access of any kind: no `URLSession`, no analytics, no crash reporters, no third-party runtime dependencies. No network entitlements (`com.apple.security.network.client` must not be present).
 - App is menu-bar only: `LSUIElement = YES`. No Dock icon.
-- Default emoji `💀`. Menu bar default style short: `💀 23d 4h`. Full style: `💀 23d 04:17:52`.
+- Default emoji `💀`. Menu bar default style short: `💀 23d 4h`. Full style: `💀 23d 4:17:52`, matching the widget's system timer: hours unpadded, and under 1 hour of the current day only `M:SS` (`💀 0d 17:52`, `💀 0d 0:05`).
 - Not set: menu bar `💀 Set date`; widget `Set your date in the app`.
 - At zero: menu bar `💀 Goodbye`; widget farewell line `Goodbye. Hand in your laptop on the way out.` Never show negative or overtime values.
 - Default layoff time of day: 17:00, local time zone.
@@ -141,8 +141,10 @@ func testShort() {
     XCTAssertEqual(CountdownFormatter.short(0.4), "0m 0s")
 }
 func testFull() {
-    XCTAssertEqual(CountdownFormatter.full(23*d + 4*h + 17*m + 52), "23d 04:17:52")
-    XCTAssertEqual(CountdownFormatter.full(4*h + 17*m + 52), "0d 04:17:52")
+    XCTAssertEqual(CountdownFormatter.full(23*d + 4*h + 17*m + 52), "23d 4:17:52")
+    XCTAssertEqual(CountdownFormatter.full(4*h + 17*m + 52), "0d 4:17:52")
+    XCTAssertEqual(CountdownFormatter.full(2*d + 17*m + 52), "2d 17:52")
+    XCTAssertEqual(CountdownFormatter.full(5), "0d 0:05")
 }
 func testPastDeadlineIsDone() {
     let now = Date()
@@ -156,7 +158,7 @@ func testExactlyZeroIsDone() {
 func testMenuBarTitle() {
     let r = 23*d + 4*h + 17*m + 52
     XCTAssertEqual(CountdownFormatter.menuBarTitle(state: .counting(remaining: r), style: .short, emoji: "💀"), "💀 23d 4h")
-    XCTAssertEqual(CountdownFormatter.menuBarTitle(state: .counting(remaining: r), style: .full, emoji: "💀"), "💀 23d 04:17:52")
+    XCTAssertEqual(CountdownFormatter.menuBarTitle(state: .counting(remaining: r), style: .full, emoji: "💀"), "💀 23d 4:17:52")
     XCTAssertEqual(CountdownFormatter.menuBarTitle(state: .notSet, style: .short, emoji: "🪦"), "🪦 Set date")
     XCTAssertEqual(CountdownFormatter.menuBarTitle(state: .done, style: .full, emoji: "💀"), "💀 Goodbye")
 }
@@ -183,6 +185,7 @@ func testMenuBarTitle() {
   - `public final class SettingsStore { init(defaults: UserDefaults); static func make(appGroupID: String?) -> SettingsStore; func load() -> LayoffSettings; func save(_ s: LayoffSettings); let usesAppGroup: Bool }`
   - Storage: JSON-encoded `LayoffSettings` under key `"layoffSettings.v1"`. `make` uses `UserDefaults(suiteName:)` only if the ID is non-nil AND `FileManager.default.containerURL(forSecurityApplicationGroupIdentifier:)` is non-nil; otherwise `.standard`.
   - Decoding a missing `emoji`/`menuBarStyle` key yields defaults (custom `init(from:)` with `decodeIfPresent`).
+  - One-time migration: when `make` picks the App Group and the group has no `layoffSettings.v1` but `.standard` does, copy it into the group, so adding a team later keeps the user's date. Test via `init(defaults:migratingFrom:)` taking two suites.
 
 - [ ] **Step 1: Write the failing tests** (use `UserDefaults(suiteName: "test.\(UUID())")!`):
 
@@ -203,6 +206,7 @@ func testEmojiSanitizing() {
 func testFirstSaveSetsStartDate()   // startDate nil → equals `now`
 func testLaterSaveKeepsStartDate()  // existing startDate unchanged
 func testDefaultLayoffDateIs1700Local() // hour 17, minute 0 in given calendar; 30 days after start of today
+func testMigratesFromStandardWhenGroupEmpty()  // group empty, standard has data → load() returns it; group non-empty → untouched
 func testNoAppGroupFallsBackToStandard() {
     XCTAssertFalse(SettingsStore.make(appGroupID: nil).usesAppGroup)
     XCTAssertFalse(SettingsStore.make(appGroupID: "ZZZZZZZZZZ.not.a.real.group").usesAppGroup) // no container in test runner
@@ -274,9 +278,9 @@ func testScheduleWithoutDeadline()  // nil deadline → [now, next midnight]
 - Produces: `@MainActor final class AppModel: ObservableObject { @Published var settings: LayoffSettings; func update(_ s: LayoffSettings) }` — `update` saves to the store, publishes, and calls `WidgetCenter.shared.reloadAllTimelines()`. Settings window scene id: `"settings"`.
 
 - [ ] **Step 1:** `LayoffCountdownApp`: `@StateObject var model = AppModel()`. Scenes in this order: `MenuBarExtra { MenuContent() } label: { MenuBarLabel() }` with `.menuBarExtraStyle(.menu)`, then `Window("Layoff Countdown Settings", id: "settings") { SettingsView() }` with `.windowResizability(.contentSize)`. `SettingsView` is a stub `Text("Settings")` until Task 6. Inject `model` with `.environmentObject`.
-- [ ] **Step 2:** `MenuBarLabel`: `TimelineView(.periodic(from: .now, by: 1))` rendering `Text(CountdownFormatter.menuBarTitle(...))` with `.monospacedDigit()`. `.task`: if `model.settings.layoffDate == nil`, `openWindow(id: "settings")` and `NSApp.activate(ignoringOtherApps: true)`.
+- [ ] **Step 2:** `MenuBarLabel`: renders `Text(CountdownFormatter.menuBarTitle(...))` with `.monospacedDigit()`, driven by `AppModel`'s `@Published var now: Date` updated by a 1 s main-run-loop timer (not `TimelineView`: the status item label may be snapshotted and stop re-rendering). `.task`: if `model.settings.layoffDate == nil`, `openWindow(id: "settings")` and `NSApp.activate(ignoringOtherApps: true)`.
 - [ ] **Step 3:** `MenuContent` items: full countdown (`CountdownFormatter.full`, or `Set date` / `Goodbye`), the layoff moment formatted `.dateTime.weekday().day().month().hour().minute()`, today's joke (disabled text), `Divider`, `Settings…` (⌘,) opening window `"settings"` and activating the app, `Quit Layoff Countdown` (⌘Q).
-- [ ] **Step 4: Verify:** build as in Task 1 Step 9 → `BUILD SUCCEEDED`. With an empty store (`defaults delete com.layoffcountdown.app` first), launch: menu bar shows `💀 Set date`, settings window opens and is frontmost. The counting state is verified in Task 6.
+- [ ] **Step 4: Verify:** build as in Task 1 Step 9 → `BUILD SUCCEEDED`. With an empty store (`defaults delete com.layoffcountdown.app` first), launch: menu bar shows `💀 Set date`, exactly one settings window opens and is frontmost; with a date set, relaunch opens no window. The counting state is verified in Task 6.
 - [ ] **Step 5: Commit** `feat(app): menu bar label, dropdown, first-launch settings`.
 
 ---
@@ -290,11 +294,11 @@ func testScheduleWithoutDeadline()  // nil deadline → [now, next midnight]
 - Produces: `enum LaunchAtLogin { static var isEnabled: Bool; static func set(_ on: Bool) throws }` using `SMAppService.mainApp` (`status == .enabled`, `register()`/`unregister()`).
 
 - [ ] **Step 1:** `SettingsView` (`Form`, `.formStyle(.grouped)`, ~420pt wide), sections:
-  - **Layoff**: `DatePicker("Layoff moment", selection:, displayedComponents: [.date, .hourAndMinute])`, initial value `layoffDate ?? defaultLayoffDate(now:calendar:)`. `DatePicker("Announced on", …, [.date])` for `startDate`, initial `startDate ?? now`. Caption: "Times use this Mac's time zone."
-  - **Menu bar**: segmented `Picker` for style (labels `💀 23d 4h` / `💀 23d 04:17:52` using the current emoji), `TextField("Emoji")` whose committed value goes through `sanitizedEmoji`.
-  - **General**: `Toggle("Open at login")` bound to `LaunchAtLogin`; on thrown error show the error text under the toggle and revert.
+  - **Layoff**: `DatePicker("Layoff moment", selection:, displayedComponents: [.date, .hourAndMinute])`, initial value `layoffDate ?? defaultLayoffDate(now:calendar:)`. `DatePicker("Announced on", …, [.date])` for `startDate`, initial `startDate ?? now`; store the start of the picked day (local calendar) so progress isn't skewed by a leftover time of day. Caption: "Times use this Mac's time zone."
+  - **Menu bar**: segmented `Picker` for style (labels `💀 23d 4h` / `💀 23d 4:17:52` using the current emoji), `TextField("Emoji")` whose committed value goes through `sanitizedEmoji`.
+  - **General**: `Toggle("Open at login")` bound to `LaunchAtLogin`; on thrown error show the error text under the toggle and revert. If after `register()` the status is `.requiresApproval`, show "Approve in System Settings › Login Items" with a button calling `SMAppService.openSystemSettingsLoginItems()`; don't silently flip the toggle back.
   - A `Save` button (default action, ⏎) applies `settingLayoffDate(_:now:)` then `update`. Live preview line above Save shows the resulting menu bar title.
-- [ ] **Step 2: Verify:** build → `BUILD SUCCEEDED`. Run app; set a moment 2 minutes ahead; Save → menu bar shows `💀 1m 59s` counting down, then `💀 Goodbye` after it passes, without relaunch. Switch to full style → `💀 0d 00:01:xx` ticking each second. Clear emoji, Save → `💀` returns. Toggle Open at login → appears in System Settings › General › Login Items. Quit and relaunch → settings persist and the window does not auto-open.
+- [ ] **Step 2: Verify:** build → `BUILD SUCCEEDED`. Run app; set a moment 2 minutes ahead; Save → menu bar shows `💀 1m 59s` counting down, then `💀 Goodbye` after it passes, without relaunch. Switch to full style → `💀 0d 1:xx` ticking each second. Clear emoji, Save → `💀` returns. Toggle Open at login → appears in System Settings › General › Login Items. Quit and relaunch → settings persist and the window does not auto-open.
 - [ ] **Step 3: Commit** `feat(app): settings window and launch at login`.
 
 ---
@@ -310,13 +314,13 @@ func testScheduleWithoutDeadline()  // nil deadline → [now, next midnight]
 - [ ] **Step 1:** `struct LayoffEntry: TimelineEntry { let date: Date; let settings: LayoffSettings?; let joke: String }` — `settings` nil when the store is not on the App Group (`usesAppGroup == false`) or `layoffDate == nil`. Provider builds one entry per `WidgetSchedule.entryDates`, policy `.after(last)`. Placeholder/snapshot use a sample 23 days out.
 - [ ] **Step 2:** `LayoffWidgetView`, dark background `Color(red: 0.11, green: 0.11, blue: 0.12)` via `.containerBackground(for: .widget)`, white text, red accent `Color(red: 1, green: 0.27, blue: 0.23)`, per mockup B+C:
   - Header `"\(emoji) TIME LEFT AT THE COMPANY"`, caption, 60% opacity.
-  - Counting: `Text("\(days)d ") + Text(timerInterval: entry.date...WidgetSchedule.dayBoundary(before: deadline, now: entry.date), countsDown: true)`, 30pt bold, `.monospacedDigit()`. The timer string must show `HH:MM:SS`; if it renders as `M:SS` under 1 hour, accept it (system behavior) and note it in the commit.
-  - `ProgressView(timerInterval: start...deadline, countsDown: false) { } currentValueLabel: { }` tinted red (self-updating). If `start >= deadline`, show a full static bar.
+  - Counting: `Text("\(days)d ") + Text(timerInterval: entry.date...WidgetSchedule.dayBoundary(before: deadline, now: entry.date), countsDown: true)`, 30pt bold, `.monospacedDigit()`. The system timer renders `H:MM:SS`, or `M:SS` under 1 hour; the menu bar full style matches that. Give the timer a fixed-width frame (it greedily takes full width otherwise) and keep the row leading-aligned.
+  - `ProgressView(timerInterval: start...deadline, countsDown: false) { } currentValueLabel: { }` tinted red (self-updating), marked `.widgetAccentable()`. If `start >= deadline`, show a full static bar. Faded/tinted rendering when the desktop isn't focused is accepted system behaviour.
   - Joke line, 13pt, quoted.
   - Done (`entry.date >= deadline`): `"\(emoji) Goodbye"` large + `Jokes.farewell`.
   - Not set: `"\(emoji) Set your date in the app"`.
 - [ ] **Step 3:** `AppModel.update` already reloads timelines (Task 5).
-- [ ] **Step 4: Verify:** build → `BUILD SUCCEEDED`. With no team set, expected result: the widget either does not appear in the gallery or shows `Set your date in the app` — record which. With a team set in `Signing.local.xcconfig` (if the user has one by now): add widget from desktop gallery, clock ticks each second, saving a new date in the app updates the widget within a few seconds. Use Xcode Previews (`#Preview(as: .systemMedium)`) for all three states regardless of signing.
+- [ ] **Step 4: Verify:** build → `BUILD SUCCEEDED`. With no team set, expected result: the widget either does not appear in the gallery or shows `Set your date in the app` — record which. With a team set in `Signing.local.xcconfig` (if the user has one by now): add widget from desktop gallery, clock ticks each second, saving a new date in the app updates the widget within a few seconds. Add `#Preview(as: .systemMedium)` for all three states (a human checks them; agents can't render Previews). If the widget can't read settings on teammates' Macs, that is accepted: menu bar only, no in-widget date fallback.
 - [ ] **Step 5: Commit** `feat(widget): medium countdown widget with progress and daily joke`.
 
 ---
@@ -325,15 +329,19 @@ func testScheduleWithoutDeadline()  // nil deadline → [now, next midnight]
 
 **Files:** Create `scripts/make-dmg.sh`, `README.md`.
 
-- [ ] **Step 1:** `scripts/make-dmg.sh` (bash, `set -euo pipefail`): `xcodegen generate` if `project.yml` is newer than the project; `xcodebuild -project LayoffCountdown.xcodeproj -scheme LayoffCountdown -configuration Release -derivedDataPath build build`; stage `LayoffCountdown.app` + `ln -s /Applications` in `build/dmg`; `hdiutil create -volname "Layoff Countdown" -srcfolder build/dmg -ov -format UDZO dist/LayoffCountdown.dmg`. Print the output path.
+- [ ] **Step 1:** `scripts/make-dmg.sh` (bash, `set -euo pipefail`): `xcodegen generate` if `project.yml` is newer than the project; `xcodebuild -project LayoffCountdown.xcodeproj -scheme LayoffCountdown -configuration Release -derivedDataPath build build DEVELOPMENT_TEAM= CODE_SIGN_IDENTITY=-` (the shared DMG is always ad-hoc signed, so no Apple ID name or team ID ends up in teammates' copies, even when `Signing.local.xcconfig` sets a team); stage `LayoffCountdown.app` + `ln -s /Applications` in `build/dmg`; `hdiutil create -volname "Layoff Countdown" -srcfolder build/dmg -ov -format UDZO dist/LayoffCountdown.dmg`. Print the output path.
 - [ ] **Step 2: Verify:** `bash scripts/make-dmg.sh` → `dist/LayoffCountdown.dmg` exists; `hdiutil attach` it, copy the app to `/tmp`, launch it, menu bar shows the countdown; `codesign -d --entitlements - <app>` shows no network entitlement. Detach.
-- [ ] **Step 3:** `README.md`: what it is (one paragraph, the joke), install (open DMG, drag to Applications, first launch right-click → Open, or System Settings › Privacy & Security › Open Anyway), set your date, widget note (bonus; needs Personal Team signing), signing setup (`Config/Signing.local.xcconfig` with `DEVELOPMENT_TEAM = XXXXXXXXXX` and `CODE_SIGN_IDENTITY = Apple Development`, then `bash scripts/make-dmg.sh`), and the **second-Mac widget test** checklist: install DMG, set a date, add widget, does it appear, does it show the date or `Set your date in the app`. States: no network access.
+- [ ] **Step 3:** `README.md`: what it is (one paragraph, the joke), install (open DMG, drag to Applications; first launch is blocked, then System Settings › Privacy & Security › Open Anyway, or `xattr -dr com.apple.quarantine /Applications/LayoffCountdown.app`; right-click → Open no longer works on macOS 15+), set your date (note: one day = 24 h back from the layoff moment, so across a DST change the day ticks over an hour off), widget note (bonus; from the DMG it may only show `Set your date in the app`; the widget works when you build from source with your own Personal Team), updating (a new DMG may need the date re-entered and Open at login re-toggled), signing setup for your own Mac only (`Config/Signing.local.xcconfig` with both `DEVELOPMENT_TEAM = XXXXXXXXXX` and `CODE_SIGN_IDENTITY = Apple Development`; setting only the team leaves it ad-hoc signed; run from Xcode, the DMG script stays ad-hoc), and the **second-Mac widget test** checklist: install DMG, set a date, add widget, does it appear, does it show the date or `Set your date in the app`. States: no network access.
 - [ ] **Step 4: Commit** `feat: DMG packaging script and README`.
 
 ---
 
 ## Execution notes for the orchestrator
 
-- Task 1 first (everything depends on it). Tasks 2, 3, 4 touch separate files in `LayoffCore` but 3 and 4 consume 2's types: run 2, then 3 and 4 in parallel. Tasks 5→6 are sequential (same app files); Task 7 can run in parallel with 5–6 after 2–4. Task 8 last.
-- Parallel agents must not both run `xcodegen generate` or `xcodebuild` into the same `build/` at once; give each its own `-derivedDataPath`.
-- UI verification steps that need eyes (menu bar, widget gallery) are reported by the implementer as "built, needs human look" if they cannot screenshot; the final handoff lists them for the user.
+- Order: Task 1, then 2, then 3 and 4 in parallel, then 5 → 6 → 7 (sequential: they share the app's user defaults, bundle IDs, menu bar and `project.pbxproj`), then 8.
+- Plan of record is this file. No CLAUDE.md: Global Constraints and Review Focus are the rules for Builders and Code Reviewers.
+- Builders run on `opus`. Each works in `.worktrees/<task-slug>` on its own branch from `main`, runs its task's own Verify step (`swift test`, `xcodebuild -derivedDataPath build` from the worktree root), commits by intent on its branch. Code Reviewer reads `main..<branch>`, excluding generated `LayoffCountdown.xcodeproj`. Fixes come as new commits. Orchestrator merges into `main` and removes the worktree.
+- `project.yml` is source of truth: never hand-edit `.xcodeproj`, Info.plists or entitlements. On a `project.pbxproj` merge conflict, regenerate with `xcodegen generate` and commit.
+- Builders never run sudo, `brew`, or `xcode-select`. `defaults delete com.layoffcountdown.app` only where a task step names it, and only one task launches the app at a time.
+- Launch checks agents can run: `pgrep -x LayoffCountdown`, `lsappinfo` (UIElement), `codesign -d --entitlements -` (no network entitlement), `pluginkit -mAvvv -i com.layoffcountdown.app.widget`. Anything visual goes in a NEEDS HUMAN list; the final handoff merges these into one checklist.
+- Not used: Operator, Prober, Profiler (no server or containers), Writer (README belongs to Task 8's Builder).
