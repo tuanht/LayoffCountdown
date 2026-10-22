@@ -150,4 +150,55 @@ final class SettingsTests: XCTestCase {
         // Only nil case: on macOS `containerURL(forSecurityApplicationGroupIdentifier:)` returns URL even for fake group.
         XCTAssertFalse(SettingsStore.make(appGroupID: nil).usesAppGroup)
     }
+
+    private static func berlin() -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Europe/Berlin")!
+        return calendar
+    }
+
+    func testWidgetWithoutConfiguredDateUsesShared() {
+        let calendar = Self.berlin()
+        let shared = LayoffSettings(layoffDate: Date(timeIntervalSinceReferenceDate: 800_000_000), emoji: "🪦")
+        XCTAssertEqual(LayoffSettings.widget(layoffDay: nil, hour: 17, startDay: nil, shared: shared, calendar: calendar),
+                       shared)
+        XCTAssertNil(LayoffSettings.widget(layoffDay: nil, hour: 17, startDay: nil, shared: nil, calendar: calendar))
+    }
+
+    func testWidgetConfiguredDaysWinOverShared() {
+        let calendar = Self.berlin()
+        let shared = LayoffSettings(layoffDate: Date(timeIntervalSinceReferenceDate: 800_000_000),
+                                    startDate: Date(timeIntervalSinceReferenceDate: 790_000_000),
+                                    emoji: "🪦")
+        // Picker days carry an arbitrary time of day; only the local calendar day counts.
+        let layoffDay = calendar.date(from: DateComponents(year: 2027, month: 3, day: 31, hour: 0, minute: 0))!
+        let startDay = calendar.date(from: DateComponents(year: 2026, month: 10, day: 1, hour: 15, minute: 42, second: 7))!
+        let settings = LayoffSettings.widget(layoffDay: layoffDay, hour: 17, startDay: startDay,
+                                             shared: shared, calendar: calendar)
+        XCTAssertEqual(settings, LayoffSettings(
+            layoffDate: calendar.date(from: DateComponents(year: 2027, month: 3, day: 31, hour: 17))!,
+            startDate: calendar.date(from: DateComponents(year: 2026, month: 10, day: 1))!,
+            emoji: "🪦"))
+    }
+
+    func testWidgetLayoffDayUsesPickedHour() {
+        let calendar = Self.berlin()
+        let layoffDay = calendar.date(from: DateComponents(year: 2027, month: 3, day: 31, hour: 23, minute: 59))!
+        for hour in [0, 9, 23] {
+            let settings = LayoffSettings.widget(layoffDay: layoffDay, hour: hour, startDay: nil, shared: nil,
+                                                 calendar: calendar)
+            XCTAssertEqual(settings?.layoffDate,
+                           calendar.date(from: DateComponents(year: 2027, month: 3, day: 31, hour: hour))!)
+        }
+    }
+
+    func testWidgetConfiguredDayWithoutStartDropsSharedStart() {
+        // Shared start belongs to the app's date, not the widget's, so it isn't borrowed.
+        let calendar = Self.berlin()
+        let shared = LayoffSettings(layoffDate: Date(timeIntervalSinceReferenceDate: 800_000_000),
+                                    startDate: Date(timeIntervalSinceReferenceDate: 790_000_000))
+        let layoffDay = calendar.date(from: DateComponents(year: 2027, month: 3, day: 31))!
+        XCTAssertNil(LayoffSettings.widget(layoffDay: layoffDay, hour: 17, startDay: nil, shared: shared,
+                                           calendar: calendar)?.startDate)
+    }
 }

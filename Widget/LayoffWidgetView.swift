@@ -33,7 +33,7 @@ struct LayoffWidgetView: View {
                 }
             }
         } else {
-            Text(verbatim: "\(emoji) Set your date in the app")
+            Text(verbatim: "\(emoji) Right-click › Edit Widget to set your date")
                 .font(.title3.bold())
         }
     }

@@ -55,9 +55,9 @@ defaults delete ~/Library/Group\ Containers/<TEAM>.com.layoffcountdown.shared/Li
 
 ## Widget
 
-The widget is a bonus. From the shared DMG, it may be listed in the widget gallery, but it will show `Set your date in the app`. The widget can only read the app's settings when both are signed with a real team and share an App Group, and the DMG is not signed that way on purpose (see below). Teammates get the menu bar only. The [second-Mac widget test](#second-mac-widget-test) checks what a teammate's Mac actually does.
+The widget can't read the app's settings from the shared DMG. That needs both signed with a real team and sharing an App Group, and the DMG is not signed that way on purpose (see below). So the widget has its own dates: right-click it › **Edit Widget**, then set **Layoff date**, **Layoff time** (whole hours, default 17:00) and, for the progress bar, **Notice started**. Dates show in your Mac's Region format (System Settings › General › Language & Region), so `3/31/2027` is 31 March 2027 on a US-format Mac. Until you do, it shows `Right-click › Edit Widget to set your date`. The [second-Mac widget test](#second-mac-widget-test) checks what a teammate's Mac actually does.
 
-The widget works on your own Mac when you build from source with your own Personal Team.
+In a build signed with your own Personal Team, the widget also falls back to the app's settings when its own date is empty. A date set on the widget always wins.
 
 ## Updating
 
@@ -140,6 +140,7 @@ Run this once on a Mac that didn't build the app, to tell the team what to expec
 3. Check the menu bar shows the countdown
 4. Right-click the desktop › Edit Widgets, search for "Layoff Countdown"
 5. Note whether the widget appears in the gallery
-6. Add the medium widget and note whether it shows your date counting down or `Set your date in the app`
+6. Add the medium widget. It shows `Right-click › Edit Widget to set your date`
+7. Right-click it › Edit Widget, set **Layoff date**, **Layoff time** and **Notice started** to match the app, and note whether it counts down with a progress bar and matches the menu bar
 
-Expected result from the DMG: the widget may or may not be listed, and if it is, it shows `Set your date in the app`.
+Expected result from the DMG: if the widget is listed, it counts down once its own dates are set.

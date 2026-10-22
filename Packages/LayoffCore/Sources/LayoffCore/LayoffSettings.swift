@@ -43,6 +43,19 @@ public struct LayoffSettings: Codable, Equatable, Sendable {
         return copy
     }
 
+    /// Widget's own dates win: unsigned builds have no App Group, so shared settings are often nil.
+    /// Edit Widget on macOS shows dates without a time, so only each picked local day counts and the hour is separate.
+    /// Shared start is dropped with a widget date, since it marks the app's notice period, not the widget's.
+    public static func widget(layoffDay: Date?, hour: Int, startDay: Date?, shared: LayoffSettings?,
+                              calendar: Calendar) -> LayoffSettings? {
+        guard let layoffDay else { return shared }
+        var settings = shared ?? .default
+        let day = calendar.startOfDay(for: layoffDay)
+        settings.layoffDate = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: day) ?? day
+        settings.startDate = startDay.map { calendar.startOfDay(for: $0) }
+        return settings
+    }
+
     /// Drops seconds. Date picker carries seconds from its initial value, and moment off whole minute
     /// would flip menu bar out of step with widget timer. Reference date and time zone offsets
     /// are whole minutes, so flooring absolute seconds works in any zone.
