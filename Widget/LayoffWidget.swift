@@ -4,7 +4,7 @@ import WidgetKit
 
 struct LayoffEntry: TimelineEntry {
     let date: Date
-    /// Nil when settings live outside App Group (widget can't see them) or no date set.
+    /// Nil when settings live outside App Group, so widget can't see them.
     let settings: LayoffSettings?
     let joke: String
 
@@ -26,7 +26,7 @@ struct LayoffProvider: TimelineProvider {
     func placeholder(in context: Context) -> LayoffEntry { .sample(now: .now) }
 
     func getSnapshot(in context: Context, completion: @escaping (LayoffEntry) -> Void) {
-        completion(.sample(now: .now))
+        completion(context.isPreview ? .sample(now: .now) : LayoffEntry(date: .now, settings: Self.sharedSettings()))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<LayoffEntry>) -> Void) {
@@ -39,9 +39,7 @@ struct LayoffProvider: TimelineProvider {
     /// Standard defaults belong to widget's own sandbox, not app's, so only App Group store counts.
     private static func sharedSettings() -> LayoffSettings? {
         let store = SettingsStore.make(appGroupID: AppGroup.current)
-        guard store.usesAppGroup else { return nil }
-        let settings = store.load()
-        return settings.layoffDate == nil ? nil : settings
+        return store.usesAppGroup ? store.load() : nil
     }
 }
 

@@ -14,39 +14,39 @@ struct LayoffWidgetView: View {
         content
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            .containerBackground(for: .widget) { Self.background }
+            .containerBackground(Self.background, for: .widget)
     }
 
+    // Verbatim text keeps ASCII digits and the emoji as-is in every locale, matching the menu bar.
     @ViewBuilder
     private var content: some View {
-        switch CountdownState.make(deadline: entry.settings?.layoffDate, now: entry.date) {
-        case .notSet:
-            Text("\(emoji) Set your date in the app")
+        if let settings = entry.settings, let deadline = settings.layoffDate {
+            if case .counting(let remaining) = CountdownState.make(deadline: deadline, now: entry.date) {
+                counting(days: CountdownFormatter.parts(remaining).days, start: settings.startDate, deadline: deadline)
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(verbatim: "\(emoji) Goodbye")
+                        .font(.system(size: 30, weight: .bold))
+                    Text(Jokes.farewell)
+                        .font(.system(size: 13))
+                        .opacity(0.8)
+                }
+            }
+        } else {
+            Text(verbatim: "\(emoji) Set your date in the app")
                 .font(.title3.bold())
-        case .done:
-            VStack(alignment: .leading, spacing: 8) {
-                Text("\(emoji) Goodbye")
-                    .font(.system(size: 30, weight: .bold))
-                Text(Jokes.farewell)
-                    .font(.system(size: 13))
-                    .opacity(0.8)
-            }
-        case .counting(let remaining):
-            if let settings = entry.settings, let deadline = settings.layoffDate {
-                counting(days: CountdownFormatter.parts(remaining).days, settings: settings, deadline: deadline)
-            }
         }
     }
 
-    private func counting(days: Int, settings: LayoffSettings, deadline: Date) -> some View {
+    private func counting(days: Int, start: Date?, deadline: Date) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("\(emoji) TIME LEFT AT THE COMPANY")
+            Text(verbatim: "\(emoji) TIME LEFT AT THE COMPANY")
                 .font(.caption)
                 .opacity(0.6)
             HStack(alignment: .firstTextBaseline, spacing: 0) {
-                Text("\(days)d ")
+                Text(verbatim: "\(days)d ")
                 // Timer text takes all offered width; widest clock string pins it so row stays leading.
-                Text("00:00:00")
+                Text(verbatim: "00:00:00")
                     .hidden()
                     .overlay(alignment: .leading) {
                         Text(timerInterval: entry.date...WidgetSchedule.dayBoundary(before: deadline, now: entry.date),
@@ -56,10 +56,10 @@ struct LayoffWidgetView: View {
             .font(.system(size: 30, weight: .bold))
             .monospacedDigit()
             .lineLimit(1)
-            progress(start: settings.startDate, deadline: deadline)
+            progress(start: start, deadline: deadline)
                 .tint(Self.accent)
                 .widgetAccentable()
-            Text("\u{201C}\(entry.joke)\u{201D}")
+            Text(verbatim: "\u{201C}\(entry.joke)\u{201D}")
                 .font(.system(size: 13))
                 .lineLimit(2)
                 .opacity(0.8)
@@ -71,7 +71,8 @@ struct LayoffWidgetView: View {
         if let start, start < deadline {
             ProgressView(timerInterval: start...deadline, countsDown: false) {} currentValueLabel: {}
         } else {
-            ProgressView(value: NoticeProgress.fraction(start: start, deadline: deadline, now: entry.date))
+            // No usable notice period start: whole bar counts as gone.
+            ProgressView(value: 1)
         }
     }
 }
