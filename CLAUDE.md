@@ -11,7 +11,7 @@ swift test --package-path Packages/LayoffCore                                  #
 swift test --package-path Packages/LayoffCore --filter CountdownTests/testShort # one test
 xcodebuild -project LayoffCountdown.xcodeproj -scheme LayoffCountdown -configuration Debug -derivedDataPath build build
 xcodegen generate             # after any change to project.yml
-bash scripts/make-dmg.sh      # Release build -> dist/LayoffCountdown.dmg
+bash scripts/make-dmg.sh      # Release build -> build/LayoffCountdown.dmg (signed) and build/LayoffCountdown-unsigned.dmg
 bash scripts/make-icon.sh     # redraw App/Assets.xcassets/AppIcon.appiconset from scripts/make-icon.swift
 ```
 

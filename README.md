@@ -129,7 +129,10 @@ Use this for your own Mac only. Personal Team signing puts your Apple ID name an
 bash scripts/make-dmg.sh
 ```
 
-This writes `dist/LayoffCountdown.dmg`. The script always builds ad-hoc without the App Group, even when `Signing.local.xcconfig` sets a team, so no name or team ID ends up in teammates' copies. It stops with an error if a team ID, network entitlement or App Group slips into the build.
+This writes two DMGs to `build/`:
+
+- `LayoffCountdown-unsigned.dmg` is the one to share. It is always ad-hoc without the App Group, even when `Signing.local.xcconfig` sets a team, so no name or team ID ends up in teammates' copies. The script stops with an error if a team ID, network entitlement or App Group slips into the build.
+- `LayoffCountdown.dmg` is signed with the identity in `SIGN_IDENTITY`, and the widget reads the app's settings. The team ID comes from the certificate (override with `DEVELOPMENT_TEAM`). It carries your team ID, so keep it for your own Macs. Without an identity the script builds only the unsigned DMG.
 
 ## Second-Mac widget test
 
